@@ -9,7 +9,12 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { text } = req.body;
+  let body = '';
+  for await (const chunk of req) {
+    body += chunk;
+  }
+
+  const { text } = JSON.parse(body);
 
   if (!text) {
     return res.status(400).json({ error: 'Text content is required' });
@@ -65,7 +70,7 @@ Content to analyze:
       });
 
       if (response.status === 429 && attempt < maxAttempts) {
-        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+        const delay = Math.pow(2, attempt) * 1000;
         console.log(`Rate limit hit, retrying after ${delay}ms (attempt ${attempt}/${maxAttempts})`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return await fetchWithRetry(attempt + 1, maxAttempts);
@@ -80,8 +85,7 @@ Content to analyze:
       const data = await response.json();
       console.log('OpenAI API response:', data);
 
-      if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-        console.error('Unexpected OpenAI API response format:', data);
+      if (!data.choices?.[0]?.message?.content) {
         throw new Error('Unexpected OpenAI API response format');
       }
 
@@ -105,7 +109,7 @@ Content to analyze:
       content: text,
     });
   } catch (error) {
-    console.error('Error in /api/analyze:', error.message, error.stack);
+    console.error('Error in /api/analyze:', error.message);
     res.status(500).json({
       score: 0,
       riskLevel: 'Error',
@@ -115,4 +119,4 @@ Content to analyze:
       content: text,
     });
   }
-};
+}
