@@ -29,22 +29,60 @@ export default async function handler(req, res) {
   const endpoint = 'https://api.openai.com/v1/chat/completions';
 
   const prompt = `
-You are an expert in greenwashing detection. Analyze the following website content for greenwashing based on these guidelines:
-1. Absolute claims (e.g., "100% eco-friendly", "carbon-neutral") must be supported by a high level of substantiation (e.g., certifications, specific data, or timelines).
-2. Comparative claims (e.g., "greener", "friendlier") must be justified with a clear basis (e.g., comparison to previous products or competitors) and the basis must be transparent.
+You are a greenwashing detection expert. Analyze the following website content to identify potential greenwashing practices, using the criteria below.
 
-For each claim, determine:
-- The risk level (1 = Low, 2 = Medium-Low, 3 = Medium, 4 = High, 5 = Severe).
-- A reason for the risk level.
-- Highlight the specific phrase in the text.
+### Guidelines:
+1. **Absolute Environmental Claims** (e.g., "100% sustainable", "carbon-neutral", "zero emissions"):
+   - Must include clear, verifiable substantiation such as certifications (e.g., ISO, B Corp), numerical data, or timelines.
+   - Vague or unverified absolutes should be flagged as high risk.
 
-Return the result in **pure JSON format**, with:
-- score (0–100, where higher = higher risk),
-- riskLevel (string: "Low Risk", "Medium Risk", etc),
-- flaggedIssuesList (array of strings),
-- highlights (array of { phrase, reason, riskLevel })
+2. **Comparative Claims** (e.g., "more eco-friendly", "greener", "less waste"):
+   - Must state the basis of comparison clearly (e.g., compared to what product/standard/timeframe).
+   - If the comparison is unsubstantiated or ambiguous, flag appropriately.
 
-DO NOT wrap your response in Markdown formatting like \`\`\`json
+3. **Buzzwords & Vague Language** (e.g., "green", "clean", "planet positive"):
+   - Should be backed by context, data, or credentials.
+   - Pure marketing speak with no substance should be flagged.
+
+4. **Omission of Harmful Aspects**:
+   - If the text highlights positives but ignores known environmental harms of the product/sector (e.g., fast fashion, oil), raise the risk level.
+
+---
+
+### For each flagged issue, return:
+
+- A **risk level**:  
+  1 = Low  
+  2 = Medium-Low  
+  3 = Medium  
+  4 = High  
+  5 = Severe
+
+- A **brief reason** for the risk
+
+- The **exact phrase or claim** found in the content
+
+---
+
+### Return the result in pure JSON format, structured as follows:
+
+{
+  "score": 0–100, // higher = higher greenwashing risk
+  "riskLevel": "Low Risk" | "Medium Risk" | "High Risk" | etc,
+  "flaggedIssuesList": [ "Issue 1 summary", "Issue 2 summary", ... ],
+  "highlights": [
+    {
+      "phrase": "Example phrase from content",
+      "reason": "Why it's problematic",
+      "riskLevel": "High"
+    }
+  ]
+}
+
+❗ DO NOT wrap the response in Markdown formatting like \`\`\`json.
+
+---
+
 Content to analyze:
 "${text.slice(0, 2000)}"
 `;
