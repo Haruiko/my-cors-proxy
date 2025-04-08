@@ -1,5 +1,3 @@
-import fetch from 'node-fetch';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://www.hncomms.co.uk');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -40,12 +38,13 @@ For each claim, determine:
 - A reason for the risk level.
 - Highlight the specific phrase in the text.
 
-Return the result in JSON format with:
-- score (0-100, where higher = higher risk),
-- riskLevel (string: "Low Risk", "Medium-Low Risk", "Medium Risk", "High Risk", "Severe Risk"),
+Return the result in **pure JSON format**, with:
+- score (0–100, where higher = higher risk),
+- riskLevel (string: "Low Risk", "Medium Risk", etc),
 - flaggedIssuesList (array of strings),
-- highlights (array of {phrase, reason, riskLevel}).
+- highlights (array of { phrase, reason, riskLevel })
 
+DO NOT wrap your response in Markdown formatting like \`\`\`json
 Content to analyze:
 "${text.slice(0, 2000)}"
 `;
@@ -73,7 +72,6 @@ Content to analyze:
         throw new Error('You have exceeded your OpenAI usage quota. Please check your plan and billing at https://platform.openai.com/account/usage');
       }
 
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('OpenAI API error:', response.status, errorText);
@@ -81,21 +79,28 @@ Content to analyze:
       }
 
       const data = await response.json();
-      console.log('OpenAI API response:', data);
+      console.log('OpenAI API raw response:', data);
 
       if (!data.choices?.[0]?.message?.content) {
         throw new Error('Unexpected OpenAI API response format');
       }
 
-      return data;
+      return data.choices[0].message.content;
     } catch (error) {
       throw error;
     }
   }
 
   try {
-    const data = await fetchWithRetry();
-    const result = JSON.parse(data.choices[0].message.content);
+    const raw = await fetchWithRetry();
+
+    // Strip markdown ```json formatting if it appears
+    const cleaned = raw
+      .replace(/^\s*```json\s*/i, '')
+      .replace(/```$/, '')
+      .trim();
+
+    const result = JSON.parse(cleaned);
     console.log('Parsed OpenAI result:', result);
 
     res.status(200).json({
