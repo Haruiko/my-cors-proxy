@@ -2,12 +2,11 @@ import fetch from 'node-fetch';
 import { JSDOM } from 'jsdom';
 
 export default async function handler(req, res) {
-  // Add CORS headers
-  res.setHeader('Access-Control-Allow-Origin', 'https://www.hncomms.co.uk'); // Allow requests from your Squarespace domain
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'); // Allow these HTTP methods
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); // Allow these headers
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', 'https://www.hncomms.co.uk');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -31,10 +30,8 @@ export default async function handler(req, res) {
       throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
     }
 
-    const text = await response.text();
-    console.log(`Successfully fetched content for ${url}`);
-    const { JSDOM } = require('jsdom');
-    const dom = new JSDOM(text);
+    const html = await response.text();
+    const dom = new JSDOM(html);
     const bodyText = dom.window.document.body.textContent.trim();
 
     res.status(200).json({ text: bodyText });
@@ -42,4 +39,4 @@ export default async function handler(req, res) {
     console.error(`Error fetching ${url}:`, error);
     res.status(500).json({ error: `Failed to retrieve content: ${error.message}` });
   }
-};
+}
