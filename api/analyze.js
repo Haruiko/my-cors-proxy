@@ -1,6 +1,8 @@
+import fetch from 'node-fetch';
+
 const fetch = require('node-fetch');
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://www.hncomms.co.uk');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');

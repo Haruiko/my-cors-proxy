@@ -1,6 +1,7 @@
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
+import { JSDOM } from 'jsdom';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Origin', 'https://www.hncomms.co.uk'); // Allow requests from your Squarespace domain
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'); // Allow these HTTP methods
