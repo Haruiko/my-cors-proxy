@@ -53,13 +53,13 @@ Content to analyze:
   async function fetchWithRetry(attempt = 1, maxAttempts = 3) {
     try {
       const response = await fetch(endpoint, {
-        model: 'gpt-3.5-turbo'
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${openaiApiKey}`,
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo'
+          model: 'gpt-3.5-turbo',
           messages: [
             { role: 'system', content: 'You are a greenwashing analysis tool.' },
             { role: 'user', content: prompt },
