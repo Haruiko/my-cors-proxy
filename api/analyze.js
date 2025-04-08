@@ -53,7 +53,7 @@ Content to analyze:
   async function fetchWithRetry(attempt = 1, maxAttempts = 3) {
     try {
       const response = await fetch(endpoint, {
-        method: 'POST',
+        model: 'gpt-3.5-turbo'
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${openaiApiKey}`,
@@ -69,12 +69,10 @@ Content to analyze:
         }),
       });
 
-      if (response.status === 429 && attempt < maxAttempts) {
-        const delay = Math.pow(2, attempt) * 1000;
-        console.log(`Rate limit hit, retrying after ${delay}ms (attempt ${attempt}/${maxAttempts})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return await fetchWithRetry(attempt + 1, maxAttempts);
+      if (response.status === 429) {
+        throw new Error('You have exceeded your OpenAI usage quota. Please check your plan and billing at https://platform.openai.com/account/usage');
       }
+
 
       if (!response.ok) {
         const errorText = await response.text();
