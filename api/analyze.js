@@ -1,12 +1,10 @@
 const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
-  // Add CORS headers
-  res.setHeader('Access-Control-Allow-Origin', 'https://www.hncomms.co.uk'); // Allow requests from your Squarespace domain
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'); // Allow these HTTP methods
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); // Allow these headers
+  res.setHeader('Access-Control-Allow-Origin', 'https://www.hncomms.co.uk');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -18,6 +16,13 @@ module.exports = async (req, res) => {
   }
 
   const openaiApiKey = process.env.OPENAI_API_KEY;
+  console.log('OpenAI API Key:', openaiApiKey ? 'Present' : 'Missing');
+
+  if (!openaiApiKey) {
+    console.error('OpenAI API Key is missing');
+    return res.status(500).json({ error: 'Server configuration error: OpenAI API key is missing' });
+  }
+
   const endpoint = 'https://api.openai.com/v1/chat/completions';
 
   const prompt = `
@@ -37,34 +42,59 @@ Return the result in JSON format with:
 - highlights (array of {phrase, reason, riskLevel}).
 
 Content to analyze:
-"${text.slice(0, 2000)}"  // Limit to avoid token overflow
+"${text.slice(0, 2000)}"
 `;
 
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: 'You are a greenwashing analysis tool.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 1000,
-      }),
-    });
+  async function fetchWithRetry(attempt = 1, maxAttempts = 3) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiApiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { role: 'system', content: 'You are a greenwashing analysis tool.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.3,
+          max_tokens: 1000,
+        }),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      if (response.status === 429 && attempt < maxAttempts) {
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+        console.log(`Rate limit hit, retrying after ${delay}ms (attempt ${attempt}/${maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return await fetchWithRetry(attempt + 1, maxAttempts);
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenAI API error:', response.status, errorText);
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('OpenAI API response:', data);
+
+      if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+        console.error('Unexpected OpenAI API response format:', data);
+        throw new Error('Unexpected OpenAI API response format');
+      }
+
+      return data;
+    } catch (error) {
+      throw error;
     }
+  }
 
-    const data = await response.json();
+  try {
+    const data = await fetchWithRetry();
     const result = JSON.parse(data.choices[0].message.content);
+    console.log('Parsed OpenAI result:', result);
 
     res.status(200).json({
       score: result.score,
@@ -75,12 +105,12 @@ Content to analyze:
       content: text,
     });
   } catch (error) {
-    console.error('ChatGPT analysis failed:', error);
+    console.error('Error in /api/analyze:', error.message, error.stack);
     res.status(500).json({
       score: 0,
       riskLevel: 'Error',
-      flaggedIssues: 'Analysis failed due to API error',
-      flaggedIssuesList: ['Analysis failed due to API error'],
+      flaggedIssues: `Analysis failed: ${error.message}`,
+      flaggedIssuesList: [`Analysis failed: ${error.message}`],
       highlights: [],
       content: text,
     });
