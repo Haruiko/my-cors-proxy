@@ -54,7 +54,7 @@ Content to analyze:
           'Authorization': `Bearer ${openaiApiKey}`,
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o',
           messages: [
             { role: 'system', content: 'You are a greenwashing analysis tool.' },
             { role: 'user', content: prompt },
