@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
 
     const text = await response.text();
     console.log(`Successfully fetched content for ${url}`);
-    const { JSDOM } = require('jsdom');
+    const { JSDOM } = require('jsdom'); // This line requires jsdom
     const dom = new JSDOM(text);
     const bodyText = dom.window.document.body.textContent.trim();
 
